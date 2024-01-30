@@ -3,11 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ALFly.DTO.EditAgentDetailsDTO
 {
-    public class EditAgentDetailsRequestDTO
+    public class EditAgentResponseDTO
     {
+        public int Id { get; set; }
         public string FullName { get; set; }
 
-        public IFormFile? Photo { get; set; }
+        public byte[]? Photo { get; set; }
 
         [EmailAddress(ErrorMessage = "Invalid Email Address")]
         public string EmailAddress { get; set; }
@@ -17,8 +18,6 @@ namespace ALFly.DTO.EditAgentDetailsDTO
 
         [DataType(DataType.Password)]
         public string ConfirmPassword { get; set; }
-
-        [Required(ErrorMessage = "Role is required")]
         public Role Role { get; set; }
     }
 }
