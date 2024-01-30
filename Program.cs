@@ -19,15 +19,27 @@ namespace Rova_2023
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            builder.Services.AddScoped<IAgentServices , AgentServices>();
-            builder.Services.AddScoped<IAgentRepository , AgentRepository>();
+            builder.Services.AddScoped<IAgentServices, AgentServices>();
+            builder.Services.AddScoped<IAgentRepository, AgentRepository>();
             builder.Services.AddDbContext<ALFlyDBContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
                 options.EnableSensitiveDataLogging();
             });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("CORSPolicy",
+                    builder => builder
+                        .WithOrigins("http://localhost:7178/swagger/index.html")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials()
+                        .SetIsOriginAllowed((hosts) => true));
+
+            });
 
             var app = builder.Build();
+            app.UseCors("CORSPolicy");
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -36,7 +48,7 @@ namespace Rova_2023
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseAuthorization();
 

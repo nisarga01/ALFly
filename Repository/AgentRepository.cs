@@ -2,6 +2,7 @@
 using ALFly.IRepository;
 using ALFly.Models;
 using ALFly.ServiceResponse;
+using Microsoft.EntityFrameworkCore;
 
 namespace ALFly.Repository
 {
@@ -14,15 +15,6 @@ namespace ALFly.Repository
         }
         public async Task<ServiceResponse<Agents>> addAgentsAsync(Agents agent)
         {
-            if (string.IsNullOrWhiteSpace(agent.FullName) || string.IsNullOrWhiteSpace(agent.EmailAddress) || string.IsNullOrWhiteSpace(Convert.ToBase64String(agent.Photo)) || string.IsNullOrWhiteSpace(agent.Password) || string.IsNullOrWhiteSpace(agent.ConfirmPassword) || string.IsNullOrWhiteSpace(agent.Role.ToString()))
-            {
-                return new ServiceResponse<Agents>()
-                {
-                    Data = null,
-                    Success = false,
-                    ErrorMessage = "Enter all the fields correctly",
-                };
-            }
             try
             {
                 await alflyDBContext.Agents.AddAsync(agent);
@@ -30,10 +22,9 @@ namespace ALFly.Repository
 
                 return new ServiceResponse<Agents>()
                 {
-                    Data = agent,
                     Success = true,
-                    ResultMessage = "Crop details added successfully"
-
+                    Data = agent,
+                    ResultMessage = "Agent details added successfully"
                 };
             }
             catch (Exception ex)
@@ -45,10 +36,79 @@ namespace ALFly.Repository
                     ErrorMessage = ex.Message,
                     ResultMessage = "Error occured while adding, please try again later"
                 };
-
             }
         }
 
+        public async Task<List<Agents>> getAgentDetailsAsync()
+        {
+            return await alflyDBContext.Agents
+        .ToListAsync();
+        }
+        public async Task<Agents> GetAgentByIdAsync(int id)
+        {
+            var agent = await alflyDBContext.Agents.FindAsync(id);
+            return agent;
+        }
+
+        public async Task<ServiceResponse<Agents>> EditAgentsAsync(int id, Agents updatedAgent)
+        {
+            try
+            {
+                var existingAgent = await alflyDBContext.Agents.FindAsync(id);
+
+                if (existingAgent == null)
+                {
+                    return new ServiceResponse<Agents>()
+                    {
+                        Success = false,
+                        ErrorMessage = "Agent not found",
+                        ResultMessage = "The specified agent does not exist"
+                    };
+                }
+
+                // Save changes to the database
+                await alflyDBContext.SaveChangesAsync();
+
+                return new ServiceResponse<Agents>()
+                {
+                    Success = true,
+                    Data = existingAgent,
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse<Agents>()
+                {
+                    Data = null,
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    ResultMessage = "Error occurred while updating, please try again later"
+                };
+            }
+        }
+        public async Task<ServiceResponse<string>> DeleteAgentAsync(Agents agent)
+        {
+            try
+            {
+                alflyDBContext.Agents.Remove(agent);
+                await alflyDBContext.SaveChangesAsync();
+
+                return new ServiceResponse<string>()
+                {
+                    Success = true,
+                    ResultMessage = "Agent deleted successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse<string>()
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    ResultMessage = "Error occurred while deleting the agent"
+                };
+            }
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-﻿using System;
+﻿ using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -20,7 +20,8 @@ namespace ALFly.Migrations
                     Photo = table.Column<byte[]>(type: "bytea", nullable: true),
                     EmailAddress = table.Column<string>(type: "text", nullable: false),
                     Password = table.Column<string>(type: "text", nullable: false),
-                    Role = table.Column<int>(type: "integer", nullable: false)
+                    ConfirmPassword = table.Column<string>(type: "text", nullable: false),
+                    Role = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
