@@ -10,7 +10,7 @@ namespace ALFly.DTO.GetAgentDetailsDTO
         [Required(ErrorMessage = "Full Name is required")]
         public string FullName { get; set; }
 
-        public byte[]? Photo { get; set; }
+        public string? Photo { get; set; }
 
         [Required(ErrorMessage = "Email Address is required")]
         [EmailAddress(ErrorMessage = "Invalid Email Address")]

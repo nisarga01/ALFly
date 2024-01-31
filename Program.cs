@@ -1,6 +1,7 @@
 using ALFly.Data;
 using ALFly.IRepository;
 using ALFly.IServices;
+using ALFly.Mapper;
 using ALFly.Repository;
 using ALFly.Services;
 using Microsoft.EntityFrameworkCore;
@@ -15,12 +16,13 @@ namespace Rova_2023
 
             // Add services to the container.
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers().AddNewtonsoftJson();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddScoped<IAgentServices, AgentServices>();
             builder.Services.AddScoped<IAgentRepository, AgentRepository>();
+            builder.Services.AddAutoMapper(typeof(ApplicationMapper));
             builder.Services.AddDbContext<ALFlyDBContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));

@@ -1,11 +1,13 @@
-﻿using ALFly.DTO.AgentRequestDTO;
+﻿using ALFly.DTO.AgentPatchDTO;
+using ALFly.DTO.AgentRequestDTO;
 using ALFly.DTO.AgentResponseDTO;
-using ALFly.DTO.EditAgentDetailsDTO;
 using ALFly.DTO.GetAgentDetailsDTO;
+using ALFly.Enums;
 using ALFly.IRepository;
 using ALFly.IServices;
 using ALFly.Models;
 using ALFly.ServiceResponse;
+using AutoMapper;
 using System.Text.RegularExpressions;
 
 namespace ALFly.Services
@@ -13,9 +15,11 @@ namespace ALFly.Services
     public class AgentServices : IAgentServices
     {
         public readonly IAgentRepository agentRepository;
-        public AgentServices(IAgentRepository agentRepository)
+        public readonly IMapper mapper;
+        public AgentServices(IAgentRepository agentRepository, IMapper mapper)
         {
             this.agentRepository = agentRepository;
+            this.mapper = mapper;
         }
         public async Task<ServiceResponse<AgentResponseDTO>> addAgentsAsync(AgentRequestDTO agentRequestDTO)
         {
@@ -95,20 +99,6 @@ namespace ALFly.Services
             };
             return Response;
         }
-        //private byte[] HandleFileUpload(IFormFile photo)
-        //{
-        //    if (photo == null || photo.Length == 0)
-        //    {
-        //        // Handle the case where no file is provided or the file is empty
-        //        return null; // Or throw an exception or handle it based on your requirements
-        //    }
-
-        //    using (var memoryStream = new MemoryStream())
-        //    {
-        //        photo.CopyTo(memoryStream);
-        //        return memoryStream.ToArray();
-        //    }
-        //}
         private string HandleFileUpload(IFormFile photo)
         {
             if (photo == null || photo.Length == 0)
@@ -138,201 +128,166 @@ namespace ALFly.Services
             // Return the URL of the saved photo
             return "/photos/" + fileName; // Adjust this based on your project's URL structure
         }
+        public async Task<ServiceResponse<List<GetAgentDetailsDTO>>> getAgentDetailsAsync()
+        {
+            try
+            {
+                var latestAgent = await agentRepository.getAgentDetailsAsync();
+
+                if (latestAgent != null && latestAgent.Any())
+                {
+                    // Mapping the list of entities to DTOs 
+                    var getAgentDetailsDTO = latestAgent.Select(agent => new GetAgentDetailsDTO
+                    {
+                        Id = agent.Id,
+                        FullName = agent.FullName,
+                        Photo = agent.Photo, // Assuming PhotoData contains byte[] image data
+                        EmailAddress = agent.EmailAddress,
+                        Role = agent.Role
+                    }).ToList();
+
+                    // Return a success response with the agent details
+                    return new ServiceResponse<List<GetAgentDetailsDTO>>
+                    {
+                        Data = getAgentDetailsDTO,
+                        Success = true,
+                        ResultMessage = "agent details retrieved successfully"
+                    };
+                }
+                else
+                {
+                    // Return a response indicating that no agents were found
+                    return new ServiceResponse<List<GetAgentDetailsDTO>>
+                    {
+                        Data = null,
+                        Success = false,
+                        ResultMessage = "No agents found in the database"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                // Return an error response if an exception occurs
+                return new ServiceResponse<List<GetAgentDetailsDTO>>
+                {
+                    Data = null,
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    ResultMessage = "Error occurred while retrieving agent details"
+                };
+            }
+        }
+        public async Task<ServiceResponse<Agents>> EditAgentsAsync(int id, AgentPatchDTO agentPatchDTO)
+        {
+            // Check if the agent with the given id exists
+            var existingAgent = await agentRepository.GetAgentByIdAsync(id);
+
+            if (existingAgent == null)
+            {
+                return new ServiceResponse<Agents>()
+                {
+                    Success = false,
+                    ErrorMessage = "Agent not found",
+                    ResultMessage = "The specified agent does not exist"
+                };
+            }
+
+
+            ApplyPropertyPatches(existingAgent, agentPatchDTO);
+
+
+            // Save changes to the database
+            var updateResult = await agentRepository.EditAgentsAsync(existingAgent); // Pass the 'id' and 'existingAgent'
+
+            if (updateResult.Success)
+            {
+                var updatedResponse = new ServiceResponse<Agents>()
+                {
+                    Success = true,
+                    ResultMessage = "Agent details updated successfully"
+                };
+
+                return updatedResponse;
+            }
+            else
+            {
+
+                return new ServiceResponse<Agents>()
+                {
+                    Success = false,
+                    ErrorMessage = updateResult.ErrorMessage,
+                    ResultMessage = "Error occurred while updating, please try again later"
+                };
+            }
+        }
+        private void ApplyPropertyPatches(Agents existingAgent, AgentPatchDTO patchDto)
+        {
+            if (patchDto == null || patchDto.PropertyPatches == null)
+            {
+
+                throw new ArgumentNullException(nameof(patchDto), "ALflyPatchDTO or PropertyPatches cannot be null.");
+            }
+
+            foreach (var propertyPatch in patchDto.PropertyPatches)
+            {
+                var property = typeof(Agents).GetProperty(propertyPatch.PropertyName);
+
+                if (property != null)
+                {
+                    try
+                    {
+                        if (property.PropertyType.BaseType == typeof(Enum))
+                        {
+                            Enum.TryParse(propertyPatch.NewValue.ToString(), out Role role);
+                            propertyPatch.NewValue = role;
+                        }
+                        var convertedValue = Convert.ChangeType(propertyPatch.NewValue, property.PropertyType);
+                        property.SetValue(existingAgent, convertedValue);
+                    }
+                    catch (InvalidCastException ex)
+                    {
+                        Console.Error.WriteLine($"Conversion error: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
+        }
+
+        public async Task<ServiceResponse<string>> DeleteAgentAsync(int id)
+        {
+            // Check if the agent with the given id exists
+            var existingAgent = await agentRepository.GetAgentByIdAsync(id);
+
+            if (existingAgent == null)
+            {
+                return new ServiceResponse<string>()
+                {
+                    Success = false,
+                    ErrorMessage = "Agent not found",
+                    ResultMessage = "The specified agent does not exist"
+                };
+            }
+
+            // Delete the agent from the database
+            var deleteResult = await agentRepository.DeleteAgentAsync(existingAgent);
+
+            if (deleteResult.Success)
+            {
+                return new ServiceResponse<string>()
+                {
+                    Success = true,
+                    ResultMessage = "Agent deleted successfully"
+                };
+            }
+            else
+            {
+                return new ServiceResponse<string>()
+                {
+                    Success = false,
+                    ErrorMessage = deleteResult.ErrorMessage,
+                    ResultMessage = "Error occurred while deleting the agent"
+                };
+            }
+        }
     }
 }
-
-
-
-//        public async Task<ServiceResponse<List<GetAgentDetailsDTO>>> getAgentDetailsAsync()
-//        {
-//            try
-//            {
-//                var latestAgent = await agentRepository.getAgentDetailsAsync();
-
-//                if (latestAgent != null && latestAgent.Any())
-//                {
-//                    // Mapping the list of entities to DTOs 
-//                    var getAgentDetailsDTO = latestAgent.Select(agent => new GetAgentDetailsDTO
-//                    {
-//                        Id = agent.Id,
-//                        FullName = agent.FullName,
-//                        Photo = agent.Photo, // Assuming PhotoData contains byte[] image data
-//                        EmailAddress = agent.EmailAddress,
-//                        Role = agent.Role
-//                    }).ToList();
-
-//                    // Return a success response with the agent details
-//                    return new ServiceResponse<List<GetAgentDetailsDTO>>
-//                    {
-//                        Data = getAgentDetailsDTO,
-//                        Success = true,
-//                        ResultMessage = "agent details retrieved successfully"
-//                    };
-//                }
-//                else
-//                {
-//                    // Return a response indicating that no agents were found
-//                    return new ServiceResponse<List<GetAgentDetailsDTO>>
-//                    {
-//                        Data = null,
-//                        Success = false,
-//                        ResultMessage = "No agents found in the database"
-//                    };
-//                }
-//            }
-//            catch (Exception ex)
-//            {
-//                // Return an error response if an exception occurs
-//                return new ServiceResponse<List<GetAgentDetailsDTO>>
-//                {
-//                    Data = null,
-//                    Success = false,
-//                    ErrorMessage = ex.Message,
-//                    ResultMessage = "Error occurred while retrieving agent details"
-//                };
-//            }
-//        }
-//        public async Task<ServiceResponse<EditAgentResponseDTO>> EditAgentsAsync(int id, EditAgentRequestDTO editAgentRequestDTO)
-//        {
-//            // Check if the agent with the given id exists
-//            var existingAgent = await agentRepository.GetAgentByIdAsync(id);
-
-//            if (existingAgent == null)
-//            {
-//                return new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = "Agent not found",
-//                    ResultMessage = "The specified agent does not exist"
-//                };
-//            }
-
-//            // Perform validation and update logic similar to addAgentsAsync
-//            if (string.IsNullOrEmpty(editAgentRequestDTO.FullName) || !Regex.IsMatch(editAgentRequestDTO.FullName.Trim(), @"^[A-Za-z]+(?:\s+[A-Za-z]+)*$"))
-//            {
-//                return new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = "ValidationFailed",
-//                    ResultMessage = "Name should not be empty and contain only letters"
-//                };
-//            }
-
-//            // Validate EmailAddress
-//            if (string.IsNullOrEmpty(editAgentRequestDTO.EmailAddress) || !Regex.IsMatch(editAgentRequestDTO.EmailAddress, @"^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}$"))
-//            {
-//                return new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = "ValidationFailed",
-//                    ResultMessage = "Email should contain lowercase letters, digits, special characters, @ symbol, and . symbol"
-//                };
-//            }
-
-//            // Validate Password
-//            if (string.IsNullOrEmpty(editAgentRequestDTO.Password) || !Regex.IsMatch(editAgentRequestDTO.Password, @"^(?=.*[A-Z])(?=.*[!@#$%^&*()\-_=+\\|/?,.<>:;""`~])(?=.*[0-9]).{8,16}$"))
-//            {
-//                return new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = "ValidationFailed",
-//                    ResultMessage = "Password should contain a minimum of 8 characters with at least 1 digit, 1 special character, 1 upper and lower case"
-//                };
-//            }
-
-//            // Validate ConfirmPassword
-//            if (string.IsNullOrEmpty(editAgentRequestDTO.ConfirmPassword) || !Regex.IsMatch(editAgentRequestDTO.ConfirmPassword, @"^(?=.*[A-Z])(?=.*[!@#$%^&*()\-_=+\\|/?,.<>:;""`~])(?=.*[0-9]).{8,10}$") || editAgentRequestDTO.Password != editAgentRequestDTO.ConfirmPassword)
-//            {
-//                return new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = "ValidationFailed",
-//                    ResultMessage = "Confirm Password has to match exactly with the password"
-//                };
-//            }
-
-//            // Update the existing agent with the new details
-//            existingAgent.FullName = editAgentRequestDTO.FullName;
-//            existingAgent.EmailAddress = editAgentRequestDTO.EmailAddress;
-//            existingAgent.Password = editAgentRequestDTO.Password;
-//            existingAgent.ConfirmPassword = editAgentRequestDTO.ConfirmPassword;
-//            existingAgent.Role = editAgentRequestDTO.Role;
-
-
-//            // Handle photo update
-//            if (editAgentRequestDTO.Photo != null)
-//            {
-//                existingAgent.Photo = HandleFileUpload(editAgentRequestDTO.Photo);
-//            }
-
-//            // Save changes to the database
-//            var updateResult = await agentRepository.EditAgentsAsync(id, existingAgent); // Pass the 'id' and 'existingAgent'
-
-//            if (updateResult.Success)
-//            {
-//                var updatedResponse = new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = true,
-//                    Data = new EditAgentResponseDTO()
-//                    {
-//                        Id = existingAgent.Id,
-//                        FullName = existingAgent.FullName,
-//                        Photo = existingAgent.Photo,
-//                        EmailAddress = existingAgent.EmailAddress,
-//                        Role = existingAgent.Role,
-//                        // Include other properties...
-//                    },
-//                    ResultMessage = "Agent details updated successfully"
-//                };
-
-//                return updatedResponse;
-//            }
-//            else
-//            {
-//                return new ServiceResponse<EditAgentResponseDTO>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = updateResult.ErrorMessage,
-//                    ResultMessage = "Error occurred while updating, please try again later"
-//                };
-//            }
-//        }
-
-//        public async Task<ServiceResponse<string>> DeleteAgentAsync(int id)
-//        {
-//            // Check if the agent with the given id exists
-//            var existingAgent = await agentRepository.GetAgentByIdAsync(id);
-
-//            if (existingAgent == null)
-//            {
-//                return new ServiceResponse<string>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = "Agent not found",
-//                    ResultMessage = "The specified agent does not exist"
-//                };
-//            }
-
-//            // Delete the agent from the database
-//            var deleteResult = await agentRepository.DeleteAgentAsync(existingAgent);
-
-//            if (deleteResult.Success)
-//            {
-//                return new ServiceResponse<string>()
-//                {
-//                    Success = true,
-//                    ResultMessage = "Agent deleted successfully"
-//                };
-//            }
-//            else
-//            {
-//                return new ServiceResponse<string>()
-//                {
-//                    Success = false,
-//                    ErrorMessage = deleteResult.ErrorMessage,
-//                    ResultMessage = "Error occurred while deleting the agent"
-//                };
-//            }
-//        }
-//    }
-//}
