@@ -14,5 +14,6 @@ namespace ALFly.IRepository
         Task<List<GetAgentPermissionsDTO>> getAgentsWithPermissionsAsync();
         Task<GetAgentPermissionsDTO> GetAgentPermissionsAsync(int agentId);
         Task<GetAgentPermissionsDTO> ModifyAgentPermissionsAsync(int agentId, ModifyPermissionDTO modifyPermissionDTO);
+        Task<List<PermissionResponseDTO>> GetDefaultPermissionsAsync();
     }
 }

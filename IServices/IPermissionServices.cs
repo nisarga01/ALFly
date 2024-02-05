@@ -14,5 +14,6 @@ namespace ALFly.IServices
         Task<ServiceResponse<List<GetAgentPermissionsDTO>>> getAgentsWithPermissionsAsync();
         Task<ServiceResponse<GetAgentPermissionsDTO>> GetAgentPermissionsAsync(int agentId);
         Task<ServiceResponse<GetAgentPermissionsDTO>> ModifyAgentPermissionsAsync(int agentId, ModifyPermissionDTO modifyPermissionDTO);
+        Task<ServiceResponse<List<PermissionResponseDTO>>> GetDefaultPermissionsAsync();
     }
 }

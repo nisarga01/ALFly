@@ -78,7 +78,7 @@ namespace ALFly.Services
             try
             {
                 var agentsWithPermissions = await permissionRepository.getAgentsWithPermissionsAsync();
-                if(agentsWithPermissions == null)
+                if(agentsWithPermissions == null&&!agentsWithPermissions.Any())
                 {
                     return new ServiceResponse<List<GetAgentPermissionsDTO>>
                     {
@@ -153,6 +153,43 @@ namespace ALFly.Services
 
                 var agentPermissions = await permissionRepository.ModifyAgentPermissionsAsync(agentId, modifyPermissionDTO);
 
+                // Check if agentPermissions is null or AgentId is null
+                if (agentPermissions == null || agentPermissions.AgentId == null || !modifyPermissionDTO.PermissionIds.Any())
+                {
+                    return new ServiceResponse<GetAgentPermissionsDTO>
+                    {
+                        Success = false,
+                        ErrorMessage = "Agent permissions not found"
+                    };
+                }
+                var nonExistingPermissionIds = modifyPermissionDTO.PermissionIds
+           .Except(agentPermissions.Permissions.Select(p => p.PermissionId))
+           .ToList();
+                if (nonExistingPermissionIds.Any())
+                {
+                    return new ServiceResponse<GetAgentPermissionsDTO>
+                    {
+                        Success = false,
+                        ErrorMessage = $"Permission with ID {string.Join(", ", nonExistingPermissionIds)} not found",
+                        ResultMessage = "Error occurred while modifying agent permissions"
+                    };
+                }
+                var existingPermissionIds = agentPermissions.Permissions.Select(p => p.PermissionId);
+
+                // Check if any provided PermissionIds already exist for the agent
+                var duplicatePermissionIds = modifyPermissionDTO.PermissionIds.Intersect(existingPermissionIds).ToList();
+
+                //var duplicatePermissionIds = modifyPermissionDTO.PermissionIds.Intersect(PermissionIds).ToList();
+
+                if (duplicatePermissionIds.Any())
+                {
+                    return new ServiceResponse<GetAgentPermissionsDTO>
+                    {
+                        Success = false,
+                        ErrorMessage = "The AgentId is already assigned with this Permission Id",
+                        ResultMessage = "Error occurred while modifying agent permissions"
+                    };
+                }
                 return new ServiceResponse<GetAgentPermissionsDTO>
                 {
                     Success = true,
@@ -167,6 +204,30 @@ namespace ALFly.Services
                     Success = false,
                     ErrorMessage = ex.Message,
                     ResultMessage = "Error occurred while modifying agent permissions"
+                };
+            }
+        }
+
+        public async Task<ServiceResponse<List<PermissionResponseDTO>>> GetDefaultPermissionsAsync()
+        {
+            try
+            {
+                var defaultPermissions = await permissionRepository.GetDefaultPermissionsAsync();
+
+                return new ServiceResponse<List<PermissionResponseDTO>>
+                {
+                    Success = true,
+                    Data = defaultPermissions,
+                    ResultMessage = "Default permissions retrieved successfully"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponse<List<PermissionResponseDTO>>
+                {
+                    Success = false,
+                    ErrorMessage = ex.Message,
+                    ResultMessage = "Error occurred while retrieving default permissions"
                 };
             }
         }

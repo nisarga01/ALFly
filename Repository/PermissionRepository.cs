@@ -102,22 +102,25 @@ namespace ALFly.Repository
         public async Task<List<GetAgentPermissionsDTO>> getAgentsWithPermissionsAsync()
         {
             var agentsWithPermissions = await alflyDBContext.Agents
-         .Include(a => a.AgentPermissions)
-         .ThenInclude(ap => ap.Permission)
-         .Select(agent => new GetAgentPermissionsDTO
-         {
-             AgentId = agent.Id,
-             FullName = agent.FullName,
-             Permissions = agent.AgentPermissions.Select(ap => new PermissionResponseDTO
-             {
-                 PermissionId = ap.Permission.PermissionId,
-                 Permission = ap.Permission.Permission,
-                 // Include other properties as needed
-             }).ToList()
-         })
-         .ToListAsync();
+                .Include(a => a.AgentPermissions)
+                .ThenInclude(ap => ap.Permission)
+                .Select(agent => new GetAgentPermissionsDTO
+                {
+                    AgentId = agent.Id,
+                    FullName = agent.FullName,
+                    Permissions = agent.AgentPermissions.Any()
+                        ? agent.AgentPermissions.Select(ap => new PermissionResponseDTO
+                        {
+                            PermissionId = ap.Permission.PermissionId,
+                            Permission = ap.Permission.Permission,
+                            // Include other properties as needed
+                        }).ToList()
+                        : null
+                })
+                    .ToListAsync();
 
-            return agentsWithPermissions;
+                return agentsWithPermissions;
+
         }
         public async Task<GetAgentPermissionsDTO> GetAgentPermissionsAsync(int agentId)
         {
@@ -149,17 +152,11 @@ namespace ALFly.Repository
                 .ThenInclude(ap => ap.Permission)
                 .FirstOrDefaultAsync(a => a.Id == agentId);
 
-            if (agent == null)
-            {
-                // Handle the case where the agent is not found
-                return null;
-            }
 
             // Update agent's permissions based on modifyPermissionsDTO
             if (modifyPermissionDTO.PermissionIds != null && modifyPermissionDTO.PermissionIds.Any())
             {
                 // Clear existing permissions (if any) for a clean update
-                agent.AgentPermissions?.Clear();
 
                 foreach (var permissionId in modifyPermissionDTO.PermissionIds)
                 {
@@ -179,6 +176,21 @@ namespace ALFly.Repository
             // Return the updated agent's permissions
             return await GetAgentPermissionsAsync(agentId);
         }
+        public async Task<List<PermissionResponseDTO>> GetDefaultPermissionsAsync()
+{
+    // Implement the logic to retrieve default permissions from the Permission table
+    var defaultPermissions = await alflyDBContext.Permissions
+        .Select(permission => new PermissionResponseDTO
+        {
+            PermissionId = permission.PermissionId,
+            Permission = permission.Permission,
+            // Include other properties as needed
+        })
+        .ToListAsync();
+
+    return defaultPermissions;
+}
+
     }
 
 }
