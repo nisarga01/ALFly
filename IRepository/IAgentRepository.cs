@@ -11,5 +11,6 @@ namespace ALFly.IRepository
         Task<Agents> GetAgentByIdAsync(int id);
         Task<ServiceResponse<Agents>> EditAgentsAsync(Agents updatedAgent);
         Task<ServiceResponse<string>> DeleteAgentAsync(Agents agent);
+        
     }
 }

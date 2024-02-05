@@ -31,6 +31,8 @@ namespace ALFly.Models
 
         //[Required(ErrorMessage = "Role is required")]
         public Role Role { get; set; }
+        // Navigation property for the many-to-many relationship
+        public virtual ICollection<AgentPermission> AgentPermissions { get; set; }
 
     }
 }

@@ -3,6 +3,7 @@ using ALFly.IServices;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using ALFly.DTO.AgentPatchDTO;
+using ALFly.DTO.PermissionDTO.PermissionRequestDTO;
 
 
 namespace ALFly.Controllers
@@ -11,10 +12,10 @@ namespace ALFly.Controllers
     [ApiController]
     public class AgentsController : ControllerBase
     {
-        public readonly IAgentServices AgentServices;
+        public readonly IAgentServices agentServices;
         public AgentsController(IAgentServices agentServices)
         {
-            AgentServices = agentServices;
+            this.agentServices = agentServices;
         }
 
         [EnableCors("CORSPolicy")]
@@ -23,11 +24,19 @@ namespace ALFly.Controllers
 
         public async Task<IActionResult> addAgentsAsync([FromForm] AgentRequestDTO agentRequestDTO)
         {
-            var Result = await AgentServices.addAgentsAsync(agentRequestDTO);
+            var Result = await agentServices.addAgentsAsync(agentRequestDTO);
             if (Result.Success)
                 return Ok(Result);
             if (!Result.Success && Result.ErrorCode == "ValidationFailed")
-                return UnprocessableEntity(Result);
+                return UnprocessableEntity(Result);  // 422 Unprocessable Entity
+            if (!Result.Success && Result.ErrorCode == "NotFound")
+                return NotFound(Result);  // 404 Not Found
+            if (!Result.Success && Result.ErrorCode == "Unauthorized")
+                return Unauthorized(Result);  // 401 Unauthorized   
+            if (!Result.Success && Result.ErrorCode == "Conflict")
+                return Conflict(Result);  // 409 Conflict
+            if (!Result.Success && Result.ErrorCode == "InternalServerError")
+                return StatusCode(500, Result);  // 500 Internal Server Error
             return BadRequest(Result);
         }
 
@@ -35,42 +44,44 @@ namespace ALFly.Controllers
         [HttpGet("GetAgentDetails")]
         public async Task<IActionResult> getAgentDetailsAsync()
         {
-            var Result = await AgentServices.getAgentDetailsAsync();
+            var Result = await agentServices.getAgentDetailsAsync();
             if (Result.Success)
-                return Ok(Result);
-            if (!Result.Success && Result.ErrorCode == "ValidationFailed")
-                return UnprocessableEntity(Result);
-            return BadRequest(Result);
+                return Ok(Result);  // 200 OK
+            if (!Result.Success && Result.ErrorCode == "NotFound")
+                return NotFound(Result);  // 404 Not Found
+            if (!Result.Success && Result.ErrorCode == "InternalServerError")
+                return StatusCode(500, Result);  // 500 Internal Server Error
+            return BadRequest(Result);  // 400 Bad Request
         }
 
         [EnableCors("CORSPolicy")]
         [HttpPatch("EditAgentDetails")]
         public async Task<IActionResult> EditAgentsAsync(int id, [FromBody] AgentPatchDTO agentPatchDTO)
         {
-            var Result = await AgentServices.EditAgentsAsync(id, agentPatchDTO);
-
+            var Result = await agentServices.EditAgentsAsync(id, agentPatchDTO);
             if (Result.Success)
-                return Ok(Result);
-
-            if (!Result.Success && Result.ErrorCode == "ValidationFailed")
-                return UnprocessableEntity(Result);
-
-            return BadRequest(Result);
+                return Ok(Result);  // 200 OK
+            if (!Result.Success && Result.ErrorCode == "NotFound")
+                return NotFound(Result);  // 404 Not Found
+            if (!Result.Success && Result.ErrorCode == "UnprocessableEntity")
+                return UnprocessableEntity(Result);  // 422 Unprocessable Entity
+            if (!Result.Success && Result.ErrorCode == "InternalServerError")
+                return StatusCode(500, Result);  // 500 Internal Server Error
+            return BadRequest(Result);  // 400 Bad Request
         }
+
         [EnableCors("CORSPolicy")]
         [HttpDelete("DeleteAgent")]
         public async Task<IActionResult> DeleteAgentAsync(int id)
         {
-            var deleteResult = await AgentServices.DeleteAgentAsync(id);
-
-            if (deleteResult.Success)
-            {
-                return Ok(deleteResult);
-            }
-            else
-            {
-                return BadRequest(deleteResult);
-            }
+            var Result = await agentServices.DeleteAgentAsync(id);
+            if (Result.Success)
+                return Ok(Result);  // 200 OK
+            if (!Result.Success && Result.ErrorCode == "NotFound")
+                return NotFound(Result);  // 404 Not Found
+            if (!Result.Success && Result.ErrorCode == "InternalServerError")
+                return StatusCode(500, Result);  // 500 Internal Server Error
+            return BadRequest(Result);  // 400 Bad Request
         }
     }
 }

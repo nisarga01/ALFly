@@ -4,6 +4,7 @@ using ALFly.Models;
 using ALFly.ServiceResponse;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ALFly.Repository
 {
@@ -11,10 +12,9 @@ namespace ALFly.Repository
     {
         public readonly ALFlyDBContext alflyDBContext;
         public readonly IMapper mapper;
-        public AgentRepository(ALFlyDBContext alflyDBContext, IMapper mapper)
+        public AgentRepository(ALFlyDBContext alflyDBContext)
         {
             this.alflyDBContext = alflyDBContext;
-            this.mapper = mapper;
         }
         public async Task<ServiceResponse<Agents>> addAgentsAsync(Agents agent)
         {
@@ -48,8 +48,10 @@ namespace ALFly.Repository
         }
         public async Task<Agents> GetAgentByIdAsync(int id)
         {
-            var agent = await alflyDBContext.Agents.FindAsync(id);
-            return agent;
+            //var agent = await alflyDBContext.Agents.FindAsync(id);
+            //return agent;
+            return await alflyDBContext.Agents
+            .FirstOrDefaultAsync(a => a.Id == id);
         }
         public async Task<ServiceResponse<Agents>> EditAgentsAsync(Agents updatedAgent)
         {
@@ -103,6 +105,7 @@ namespace ALFly.Repository
             }
         }
     }
+
 }
     
 

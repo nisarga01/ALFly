@@ -2,12 +2,16 @@
 using ALFly.DTO.AgentRequestDTO;
 using ALFly.DTO.AgentResponseDTO;
 using ALFly.DTO.GetAgentDetailsDTO;
+using ALFly.DTO.PermissionDTO.PermissionRequestDTO;
+using ALFly.DTO.PermissionDTO.PermissionResponseDTO;
 using ALFly.Enums;
 using ALFly.IRepository;
 using ALFly.IServices;
 using ALFly.Models;
+using ALFly.Repository;
 using ALFly.ServiceResponse;
 using AutoMapper;
+using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
 namespace ALFly.Services
@@ -15,11 +19,10 @@ namespace ALFly.Services
     public class AgentServices : IAgentServices
     {
         public readonly IAgentRepository agentRepository;
-        public readonly IMapper mapper;
-        public AgentServices(IAgentRepository agentRepository, IMapper mapper)
+
+        public AgentServices(IAgentRepository agentRepository)
         {
             this.agentRepository = agentRepository;
-            this.mapper = mapper;
         }
         public async Task<ServiceResponse<AgentResponseDTO>> addAgentsAsync(AgentRequestDTO agentRequestDTO)
         {
@@ -69,7 +72,7 @@ namespace ALFly.Services
             //byte[] photo = HandleFileUpload(agentRequestDTO.Photo);
             string photoUrl = HandleFileUpload(agentRequestDTO.Photo);
 
-            //var agent = mapper.Map<Agents>(agentRequestDTO);
+
             var agent = new Agents()
             {
                 FullName = agentRequestDTO.FullName,
@@ -79,6 +82,7 @@ namespace ALFly.Services
                 ConfirmPassword = agentRequestDTO.ConfirmPassword,
                 Role = agentRequestDTO.Role,
             };
+            
             var Result = await agentRepository.addAgentsAsync(agent);
             var Response = new ServiceResponse<AgentResponseDTO>()
             {
@@ -106,7 +110,7 @@ namespace ALFly.Services
                 return null;
             }
 
-            // Define a folder path to store the photos (adjust this based on your project structure)
+            // Define a folder path to store the photos
             var uploadFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "photos");
 
             // Create the folder if it doesn't exist
@@ -195,7 +199,6 @@ namespace ALFly.Services
 
             ApplyPropertyPatches(existingAgent, agentPatchDTO);
 
-
             // Save changes to the database
             var updateResult = await agentRepository.EditAgentsAsync(existingAgent); // Pass the 'id' and 'existingAgent'
 
@@ -211,7 +214,6 @@ namespace ALFly.Services
             }
             else
             {
-
                 return new ServiceResponse<Agents>()
                 {
                     Success = false,
@@ -252,7 +254,6 @@ namespace ALFly.Services
                 }
             }
         }
-
         public async Task<ServiceResponse<string>> DeleteAgentAsync(int id)
         {
             // Check if the agent with the given id exists
@@ -289,5 +290,7 @@ namespace ALFly.Services
                 };
             }
         }
+
     }
+
 }

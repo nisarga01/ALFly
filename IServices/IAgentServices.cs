@@ -2,6 +2,8 @@
 using ALFly.DTO.AgentRequestDTO;
 using ALFly.DTO.AgentResponseDTO;
 using ALFly.DTO.GetAgentDetailsDTO;
+using ALFly.DTO.PermissionDTO.PermissionRequestDTO;
+using ALFly.DTO.PermissionDTO.PermissionResponseDTO;
 using ALFly.Models;
 using ALFly.ServiceResponse;
 
@@ -12,7 +14,8 @@ namespace ALFly.IServices
         Task<ServiceResponse<AgentResponseDTO>> addAgentsAsync(AgentRequestDTO agentRequestDTO);
         Task<ServiceResponse<List<GetAgentDetailsDTO>>> getAgentDetailsAsync();
         Task<ServiceResponse<Agents>> EditAgentsAsync(int id, AgentPatchDTO agentPatchDTO);
-
         Task<ServiceResponse<string>> DeleteAgentAsync(int id);
+        
+
     }
 }

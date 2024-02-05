@@ -1,7 +1,6 @@
 using ALFly.Data;
 using ALFly.IRepository;
 using ALFly.IServices;
-using ALFly.Mapper;
 using ALFly.Repository;
 using ALFly.Services;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +21,8 @@ namespace Rova_2023
             builder.Services.AddSwaggerGen();
             builder.Services.AddScoped<IAgentServices, AgentServices>();
             builder.Services.AddScoped<IAgentRepository, AgentRepository>();
-            builder.Services.AddAutoMapper(typeof(ApplicationMapper));
+            builder.Services.AddScoped<IPermissionServices , PermissionServices>();
+            builder.Services.AddScoped<IPermissionRepository , PermissionRepository>();
             builder.Services.AddDbContext<ALFlyDBContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
