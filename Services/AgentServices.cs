@@ -11,6 +11,7 @@ using ALFly.Models;
 using ALFly.Repository;
 using ALFly.ServiceResponse;
 using AutoMapper;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
@@ -82,7 +83,7 @@ namespace ALFly.Services
                 ConfirmPassword = agentRequestDTO.ConfirmPassword,
                 Role = agentRequestDTO.Role,
             };
-            
+
             var Result = await agentRepository.addAgentsAsync(agent);
             var Response = new ServiceResponse<AgentResponseDTO>()
             {
@@ -181,6 +182,7 @@ namespace ALFly.Services
                 };
             }
         }
+
         public async Task<ServiceResponse<Agents>> EditAgentsAsync(int id, AgentPatchDTO agentPatchDTO)
         {
             // Check if the agent with the given id exists
@@ -196,11 +198,17 @@ namespace ALFly.Services
                 };
             }
 
+            // Validate property patches
+            var validationResponse = ValidatePropertyPatches(agentPatchDTO);
+            if (!validationResponse.Success)
+            {
+                return validationResponse;
+            }
 
             ApplyPropertyPatches(existingAgent, agentPatchDTO);
 
             // Save changes to the database
-            var updateResult = await agentRepository.EditAgentsAsync(existingAgent); // Pass the 'id' and 'existingAgent'
+            var updateResult = await agentRepository.EditAgentsAsync(existingAgent);
 
             if (updateResult.Success)
             {
@@ -221,6 +229,85 @@ namespace ALFly.Services
                     ResultMessage = "Error occurred while updating, please try again later"
                 };
             }
+        }
+        private ServiceResponse<Agents> ValidatePropertyPatches(AgentPatchDTO patchDto)
+        {
+            if (patchDto == null || patchDto.PropertyPatches == null)
+            {
+                return new ServiceResponse<Agents>()
+                {
+                    Success = false,
+                    ErrorMessage = "Invalid patch data",
+                    ResultMessage = "Property patches cannot be null."
+                };
+            }
+
+            foreach (var propertyPatch in patchDto.PropertyPatches)
+            {
+                switch (propertyPatch.PropertyName)
+                {
+                    case "FullName":
+                        if (!IsValidFullName(propertyPatch.NewValue))
+                        {
+                            return new ServiceResponse<Agents>()
+                            {
+                                Success = false,
+                                ErrorMessage = "Invalid value for FullName",
+                                ResultMessage = "FullName should not contain numbers,specialcharacters."
+                            };
+                        }
+                        break;
+                    case "EmailAddress":
+                        if (!IsValidEmailAddress(propertyPatch.NewValue))
+                        {
+                            return new ServiceResponse<Agents>()
+                            {
+                                Success = false,
+                                ErrorMessage = "Invalid value for EmailAddress",
+                                ResultMessage = "Invalid email format ! email should not be empty."
+                            };
+                        }
+                        break;
+                    case "Password":
+                        if (!IsValidPassword(propertyPatch.NewValue))
+                        {
+                            return new ServiceResponse<Agents>()
+                            {
+                                Success = false,
+                                ErrorMessage = "Invalid value for Password",
+                                ResultMessage = "Password does not meet the criteria. ! password should not be empty"
+                            };
+                        }
+                        break;
+                }
+            }
+            return new ServiceResponse<Agents>() { Success = true };
+        }
+        
+        private bool IsValidFullName(object newValue)
+        {
+            if (newValue is string fullName && !string.IsNullOrWhiteSpace(fullName))
+            {
+                // Check if the full name contains only letters and spaces
+                return fullName.All(char.IsLetter) && !fullName.Any(char.IsDigit) && !fullName.Any(char.IsPunctuation);
+            }
+            return false;
+        }
+        private bool IsValidEmailAddress(object newValue)
+        {
+            if (newValue is string emailAddress && !string.IsNullOrWhiteSpace(emailAddress))
+            {
+                return Regex.IsMatch(emailAddress, @"^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}$");
+            }
+            return false;
+        }
+        private bool IsValidPassword(object newValue)
+        {
+            if (newValue is string password && !string.IsNullOrWhiteSpace(password))
+            {
+                return Regex.IsMatch(password, @"^(?=.*[A-Z])(?=.*[!@#$%^&*()\-_=+\\|/?,.<>:;""`~])(?=.*[0-9]).{8,16}$");
+            }
+            return false;
         }
         private void ApplyPropertyPatches(Agents existingAgent, AgentPatchDTO patchDto)
         {
@@ -290,7 +377,5 @@ namespace ALFly.Services
                 };
             }
         }
-
     }
-
 }

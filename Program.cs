@@ -39,7 +39,6 @@ namespace Rova_2023
                         .SetIsOriginAllowed((hosts) => true));
 
             });
-
             var app = builder.Build();
             app.UseCors("CORSPolicy");
 
@@ -49,7 +48,8 @@ namespace Rova_2023
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            app.UseSwagger();
+            app.UseSwaggerUI();
             //app.UseHttpsRedirection();
 
             app.UseAuthorization();
